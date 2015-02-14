@@ -7,6 +7,9 @@ scriptencoding utf-8
 let s:save_cpo = &cpo
 set cpo&vim
 
+let s:V = vital#of('checklinks')
+let s:HTTP = s:V.import('Web.HTTP')
+
 ""Author: itchyny
 " License: MIT License
 " https://github.com/itchyny/vim-highlighturl/blob/51f53e10f31daae20173fa7536d579925b93ad68/autoload/highlighturl.vim#L19-L26
@@ -20,6 +23,20 @@ let g:checklinks#pattern = get(g:, 'checklinks#pattern',
 \.'\%(\[[&:#*@~%_\-=?!+;/.0-9A-Za-z]*\]\)\?'
 \.'\)*[-/0-9A-Za-z]*\%(:\d\d*\/\?\)\?'
 \)
+
+if !exists('s:cache')
+  let s:cache = {}
+endif
+
+" @return {'success': Boolean, 'status': Number}
+function! s:check_url(url) abort
+  if has_key(s:cache, a:url)
+    return s:cache[a:url]
+  endif
+  let r = s:HTTP.get(a:url)
+  let s:cache[a:url] = {'success': r.success, 'status': r.status}
+  return s:cache[a:url]
+endfunction
 
 function! checklinks#check() abort
 endfunction
