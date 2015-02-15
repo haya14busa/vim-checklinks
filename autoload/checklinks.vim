@@ -14,6 +14,7 @@ let s:V = vital#of('checklinks')
 let s:String = s:V.import('Data.String')
 let s:List = s:V.import('Data.List')
 let s:HTTP = s:V.import('Web.HTTP')
+let s:Reunions = s:V.import('Reunions')
 
 function! s:init_hl() abort
   hi CheckLinksUnderline term=underline cterm=underline gui=underline
@@ -73,6 +74,10 @@ function! s:gettext() abort
   return join(getline(1, '$'), "\n")
 endfunction
 
+function! s:getlinks() abort
+  return s:List.sort(s:scanlinks(s:gettext()), 'len(a:a)-len(a:b)')
+endfunction
+
 function! s:noregex(pattern) abort
   return '\V' . escape(a:pattern, '\')
 endfunction
@@ -92,8 +97,17 @@ function! s:hi.matchdeleteall() abort
   let self.ids = []
 endfunction
 
+" r: {'success': Boolean, 'status': Number}
+function! s:hilink(link, r) abort
+  if a:r.success
+    call s:hi.matchadd(g:checklinks#highlights.ok, s:noregex(a:link))
+  else
+    call s:hi.matchadd(g:checklinks#highlights.bad, s:noregex(a:link))
+  endif
+endfunction
+
 function! checklinks#check() abort
-  for link in s:List.sort(s:scanlinks(s:gettext()), 'len(a:a)-len(a:b)')
+  for link in s:getlinks()
     let r = s:check_url(link)
     if r.success
       call s:hi.matchadd(g:checklinks#highlights.ok, s:noregex(link))
@@ -106,6 +120,40 @@ endfunction
 function! checklinks#off() abort
   call s:hi.matchdeleteall()
 endfunction
+
+function! checklinks#checkasync() abort
+  for link in s:getlinks()
+    call s:spawn(link)
+  endfor
+endfunction
+
+function! s:spawn(link) abort
+  let m = {}
+  let m.process = s:makeprocess(a:link)
+  function! m.apply(parent) abort
+    if self.process.is_exit()
+      return a:parent.kill(self)
+    endif
+  endfunction
+  call s:Reunions.register(m)
+endfunction
+
+function! s:makeprocess(link) abort
+  let process = s:Reunions.http_get(a:link)
+  let process.link = a:link
+  function! process.then(output, ...) abort
+    " echom PP(a:output)
+    " call Plog(PP(a:output))
+    echom 'then'
+    call s:hilink(self.link, {'success': output.success, 'status': output.status})
+  endfunction
+  return process
+endfunction
+
+augroup reunions-checklinks
+  autocmd!
+  autocmd CursorHold * call s:Reunions.update_in_cursorhold(1)
+augroup END
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
