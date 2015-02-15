@@ -14,7 +14,8 @@ let g:loaded_checklinks = 1
 let s:save_cpo = &cpo
 set cpo&vim
 
-command! CheckLinks call checklinks#check()
+command! CheckLinks    call checklinks#check()
+command! CheckLinksOff call checklinks#off()
 
 let &cpo = s:save_cpo
 unlet s:save_cpo
