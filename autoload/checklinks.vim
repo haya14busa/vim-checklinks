@@ -33,7 +33,12 @@ function! s:check_url(url) abort
   if has_key(s:cache, a:url)
     return s:cache[a:url]
   endif
-  let r = s:HTTP.get(a:url)
+  try
+    let r = s:HTTP.get(a:url)
+  catch
+    " Catch unexpected error e.g. s:HTTP.get('') throws E803: ID not found: 3
+    let r = {'success': s:FALSE, 'status': -1}
+  endtry
   let s:cache[a:url] = {'success': r.success, 'status': r.status}
   return s:cache[a:url]
 endfunction
